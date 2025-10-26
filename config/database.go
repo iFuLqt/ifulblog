@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"ifulblog/database/seeds"
 
 	"github.com/rs/zerolog/log"
 	"gorm.io/driver/postgres"
@@ -24,11 +25,15 @@ func (cfg Config) ConnectionPostgres() (*Postgres, error) {
 		log.Error().Err(err).Msg("[ConnectionPostgres-1] failed to connect to database " + cfg.Psql.Host)
 		return nil, err
 	}
+
 	sqlDB, err := db.DB()
 	if err != nil {
 		log.Error().Err(err).Msg("[ConnectionPostgres-2] failed to get database connection")
 		return nil, err
 	}
+
+	seeds.SeedRoles(db)
+
 	sqlDB.SetMaxOpenConns(cfg.Psql.DBMaxOpen)
 	sqlDB.SetMaxIdleConns(cfg.Psql.DBMaxIdle)
 
