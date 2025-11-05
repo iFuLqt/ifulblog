@@ -17,8 +17,8 @@ type Options struct {
 	authJwt auth.Jwt
 }
 
-func (o *Options) CheckToken() func(fiber.Ctx) error {
-	return func(c fiber.Ctx) error {
+func (o *Options) CheckToken() func(*fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
 		var errorResponse response.ErrorResponseDefault
 		authHandler := c.Get("Authorization")
 		if authHandler == "" {
