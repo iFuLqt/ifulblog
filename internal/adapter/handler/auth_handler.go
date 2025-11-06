@@ -5,6 +5,7 @@ import (
 	"ifulblog/internal/adapter/handler/response"
 	"ifulblog/internal/core/domain/entity"
 	"ifulblog/internal/core/service"
+	validatorLib "ifulblog/lib/validator"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -37,8 +38,9 @@ func (a *authHandler) Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(errorResp)
 	}
 
-	if err = validate.Struct(req); err != nil {
+	if err = validatorLib.ValidateStruct(req); err != nil {
 		code = "[HANDLER] Login - 2"
+		log.Errorw(code, err)
 		errorResp.Meta.Status = false
 		errorResp.Meta.Message = err.Error()
 
@@ -53,10 +55,14 @@ func (a *authHandler) Login(c *fiber.Ctx) error {
 	result, err := a.authService.GetUserByEmail(c.Context(), reqLogin)
 	if err != nil {
 		code = "[HANDLER] Login - 3"
+		log.Errorw(code, err)
 		errorResp.Meta.Status = false
 		errorResp.Meta.Message = err.Error()
 
-		return c.Status(fiber.StatusBadRequest).JSON(errorResp)
+		if err.Error() == "Invalid Password" {
+			return c.Status(fiber.StatusUnauthorized).JSON(errorResp)
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(errorResp)
 	}
 
 	resp.Meta.Status = true

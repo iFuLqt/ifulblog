@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"ifulblog/config"
 	"ifulblog/internal/adapter/repository"
 	"ifulblog/internal/core/domain/entity"
@@ -36,7 +37,8 @@ func (a *authService) GetUserByEmail(ctx context.Context, req entity.LoginReques
 
 	if CheckPass := conv.CheckPasswordHash(req.Password, result.Password); !CheckPass {
 		code = "[SERVICE] GetUserByEmail - 2"
-		log.Errorw(code, "Invalid password")
+		err = errors.New("Invalid password")
+		log.Errorw(code, err)
 		return nil, err
 	}
 
