@@ -1,21 +1,21 @@
 package handler
 
 import (
+	"ifulblog/internal/adapter/handler/request"
 	"ifulblog/internal/adapter/handler/response"
 	"ifulblog/internal/core/domain/entity"
 	"ifulblog/internal/core/service"
+	validatorLib "ifulblog/lib/validator"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
 )
 
-
 var defaultSuccesResponse response.DefaultSuccessResponse
-
 
 type CategoryHandler interface {
 	GetCategories(c *fiber.Ctx) error
-	GetCategoryByID(c *fiber.Ctx) error 
+	GetCategoryByID(c *fiber.Ctx) error
 	CreateCategory(c *fiber.Ctx) error
 	EditCategoryByID(c *fiber.Ctx) error
 	DeleteCategory(c *fiber.Ctx) error
@@ -27,7 +27,59 @@ type categoryHandler struct {
 
 // CreateCategory implements CategoryHandler.
 func (ch *categoryHandler) CreateCategory(c *fiber.Ctx) error {
-	panic("unimplemented")
+	var req request.CategoryRequest
+	claims := c.Locals("user").(*entity.JwtData)
+	userID := claims.UserID
+	if userID == 0 {
+		code = "[HANDLER] CreateCategory - 1"
+		log.Errorw(code, err)
+		errorResp.Meta.Status = false
+		errorResp.Meta.Message = "Unauthorized access"
+
+		return c.Status(fiber.StatusUnauthorized).JSON(errorResp)
+	}
+
+	if err := c.BodyParser(&req); err != nil {
+		code = "[HANDLER] CreateCategory - 2"
+		log.Errorw(code, err)
+		errorResp.Meta.Status = false
+		errorResp.Meta.Message = "Invalid request body"
+
+		return c.Status(fiber.StatusBadRequest).JSON(errorResp)
+	}
+
+	if err := validatorLib.ValidateStruct(req); err != nil {
+		code = "[HANDLER] CreateCategory - 3"
+		log.Errorw(code, err)
+		errorResp.Meta.Status = false
+		errorResp.Meta.Message = err.Error()
+
+		return c.Status(fiber.StatusBadRequest).JSON(errorResp)
+	}
+
+	reqEntity := entity.CategoryEntity{
+		Title: req.Title,
+		User: entity.UserEntity{
+			ID: int64(userID),
+		},
+	}
+
+	err := ch.categoryService.CreateCategory(c.Context(), reqEntity)
+	if err != nil {
+		code = "[HANDLER] CreateCategory - 4"
+		log.Errorw(code, err)
+		errorResp.Meta.Status = false
+		errorResp.Meta.Message = err.Error()
+		
+		return c.Status(fiber.StatusInternalServerError).JSON(errorResp)
+	}
+
+	defaultSuccesResponse.Data = nil
+	defaultSuccesResponse.Pagination = nil
+	defaultSuccesResponse.Meta.Status = true
+	defaultSuccesResponse.Meta.Message = "Category created successfully"
+
+	return c.JSON(defaultSuccesResponse)
 }
 
 // DeleteCategory implements CategoryHandler.
@@ -55,25 +107,26 @@ func (ch *categoryHandler) GetCategories(c *fiber.Ctx) error {
 
 	results, err := ch.categoryService.GetCategories(c.Context())
 	if err != nil {
-		code = "[HANDLER] GetCategories"
+		code = "[HANDLER] GetCategories - 2"
 		log.Errorw(code, err)
 		errorResp.Meta.Status = false
 		errorResp.Meta.Message = err.Error()
 
-		return c.Status(fiber.StatusUnauthorized).JSON(errorResp)
+		return c.Status(fiber.StatusInternalServerError).JSON(errorResp)
 	}
 
 	categoryResponses := []response.SuccessCategoryResponse{}
 	for _, result := range results {
 		categoryResponse := response.SuccessCategoryResponse{
-			ID: result.ID,
-			Title: result.Title,
-			Slug: result.Slug,
+			ID:            result.ID,
+			Title:         result.Title,
+			Slug:          result.Slug,
 			CreatedByName: result.User.Name,
 		}
 		categoryResponses = append(categoryResponses, categoryResponse)
 	}
 	defaultSuccesResponse.Meta.Status = true
+	defaultSuccesResponse.Pagination = nil
 	defaultSuccesResponse.Meta.Message = "Categories fetched successfully"
 	defaultSuccesResponse.Data = categoryResponses
 

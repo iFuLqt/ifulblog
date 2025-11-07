@@ -27,7 +27,7 @@ func (o *Options) CheckToken() func(*fiber.Ctx) error {
 			return c.Status(fiber.StatusUnauthorized).JSON(errorResponse)
 		}
 
-		tokenString := strings.Split(authHandler, "Bearer")[1]
+		tokenString := strings.Split(authHandler, "Bearer ")[1]
 		claims, err := o.authJwt.VerifyAccessToken(tokenString)
 		if err != nil {
 			errorResponse.Meta.Status = false
