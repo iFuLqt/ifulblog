@@ -3,7 +3,7 @@ package model
 import "time"
 
 type Category struct {
-	ID          int        `gorm:"id"`
+	ID          int64       `gorm:"id"`
 	CreatedByID int64      `gorm:"created_by_id"`
 	User        User       `gorm:"foreignKey:CreatedByID"`
 	Title       string     `gorm:"title"`
