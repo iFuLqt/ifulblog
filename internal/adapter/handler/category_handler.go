@@ -85,7 +85,44 @@ func (ch *categoryHandler) CreateCategory(c *fiber.Ctx) error {
 
 // DeleteCategory implements CategoryHandler.
 func (ch *categoryHandler) DeleteCategory(c *fiber.Ctx) error {
-	panic("unimplemented")
+	claims := c.Locals("user").(*entity.JwtData)
+	userID := claims.UserID
+	if userID == 0 {
+		code = "[HANDLER] DeleteCategory - 1"
+		log.Errorw(code, err)
+		errorResp.Meta.Status = false
+		errorResp.Meta.Message = "Unauthorized access"
+
+		return c.Status(fiber.StatusUnauthorized).JSON(errorResp)
+	}
+
+	idParam := c.Params("categoryID")
+	id, err := conv.StringToInt64(idParam)
+	if err != nil {
+		code = "[HANDLER] DeleteCategory - 2"
+		log.Errorw(code, err)
+		errorResp.Meta.Status = false
+		errorResp.Meta.Message = err.Error()
+
+		return c.Status(fiber.StatusBadRequest).JSON(errorResp)
+	}
+
+	err = ch.categoryService.DeleteCategory(c.Context(), id)
+	if err != nil {
+		code = "[HANDLER] DeleteCategory - 3"
+		log.Errorw(code, err)
+		errorResp.Meta.Status = false
+		errorResp.Meta.Message = err.Error()
+
+		return c.Status(fiber.StatusInternalServerError).JSON(errorResp)
+	}
+
+	defaultSuccesResponse.Data = nil
+	defaultSuccesResponse.Pagination = nil
+	defaultSuccesResponse.Meta.Status = true
+	defaultSuccesResponse.Meta.Message = "Category deleted successfully"
+
+	return c.JSON(defaultSuccesResponse)
 }
 
 // EditCategoryByID implements CategoryHandler.
