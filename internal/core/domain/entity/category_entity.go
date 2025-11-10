@@ -1,8 +1,11 @@
 package entity
 
 type CategoryEntity struct {
-	ID int64
+	ID    int64
 	Title string
-	Slug string
-	User UserEntity
+	Slug  string
+	User  UserEntity
 }
+
+// Error implements error.
+

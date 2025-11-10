@@ -5,6 +5,7 @@ import (
 	"ifulblog/internal/adapter/handler/response"
 	"ifulblog/internal/core/domain/entity"
 	"ifulblog/internal/core/service"
+	"ifulblog/lib/conv"
 	validatorLib "ifulblog/lib/validator"
 
 	"github.com/gofiber/fiber/v2"
@@ -70,7 +71,7 @@ func (ch *categoryHandler) CreateCategory(c *fiber.Ctx) error {
 		log.Errorw(code, err)
 		errorResp.Meta.Status = false
 		errorResp.Meta.Message = err.Error()
-		
+
 		return c.Status(fiber.StatusInternalServerError).JSON(errorResp)
 	}
 
@@ -135,7 +136,52 @@ func (ch *categoryHandler) GetCategories(c *fiber.Ctx) error {
 
 // GetCategoryByID implements CategoryHandler.
 func (ch *categoryHandler) GetCategoryByID(c *fiber.Ctx) error {
-	panic("unimplemented")
+	claims := c.Locals("user").(*entity.JwtData)
+	userID := claims.UserID
+	if userID == 0 {
+		code = "[HANDLER] GetCategoryByID - 1"
+		log.Errorw(code, err)
+		errorResp.Meta.Status = false
+		errorResp.Meta.Message = "Unauthorized access"
+
+		return c.Status(fiber.StatusUnauthorized).JSON(errorResp)
+	}
+
+	idParam := c.Params("categoryID")
+	id, err := conv.StringToInt64(idParam)
+	if err != nil {
+		code = "[HANDLER] GetCategoryByID - 2"
+		log.Errorw(code, err)
+		errorResp.Meta.Status = false
+		errorResp.Meta.Message = err.Error()
+
+		return c.Status(fiber.StatusBadRequest).JSON(errorResp)
+	}
+
+	result, err := ch.categoryService.GetCategoryByID(c.Context(), id)
+	if err != nil {
+		code = "[HANDLER] GetCategoryByID - 3"
+		log.Errorw(code, err)
+		errorResp.Meta.Status = false
+		errorResp.Meta.Message = err.Error()
+
+		return c.Status(fiber.StatusInternalServerError).JSON(errorResp)
+	}
+
+	categoryResponse := response.SuccessCategoryResponse{
+		ID: id,
+		Title: result.Title,
+		Slug: result.Slug,
+		CreatedByName: result.User.Name,
+	}
+	
+	defaultSuccesResponse.Meta.Status = true
+	defaultSuccesResponse.Pagination = nil
+	defaultSuccesResponse.Meta.Message = "Category fetched detail successfully"
+	defaultSuccesResponse.Data = categoryResponse
+
+	return c.JSON(defaultSuccesResponse)
+
 }
 
 func NewCategoryHandler(categoryService service.CategoryService) CategoryHandler {
