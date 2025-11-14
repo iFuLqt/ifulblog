@@ -10,14 +10,14 @@ type Meta struct {
 }
 
 type DefaultSuccessResponse struct {
-	Meta       Meta        `json:"meta"`
-	Data       interface{} `json:"data,omitempty"`
+	Meta       Meta                `json:"meta"`
+	Data       interface{}         `json:"data,omitempty"`
 	Pagination *PaginationResponse `json:"pagination,omitempty"`
 }
 
 type PaginationResponse struct {
 	TotalRecords int64 `json:"total_records"`
-	Page int64 `json:"page"`
-	PerPage int64 `json:"per_page"`
-	TotalPages int64 `json:"total_pages"`
+	Page         int64 `json:"page"`
+	PerPage      int64 `json:"per_page"`
+	TotalPages   int64 `json:"total_pages"`
 }
