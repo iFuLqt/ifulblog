@@ -29,12 +29,51 @@ func (c *contentRepository) CreateContent(ctx context.Context, req entity.Conten
 
 // DeleteContent implements ContentRepository.
 func (c *contentRepository) DeleteContent(ctx context.Context, id int64) error {
-	panic("unimplemented")
+	err := c.db.Where("id = ?", id).Delete(&model.Content{}).Error
+	if err != nil {
+		code = "[REPOSITORY] DeleteContent - 1"
+		log.Errorw(code, err)
+		return err
+	}
+	return nil
 }
 
 // GetContentByID implements ContentRepository.
 func (c *contentRepository) GetContentByID(ctx context.Context, id int64) (*entity.ContentEntity, error) {
-	panic("unimplemented")
+	var modelContent model.Content
+
+	err := c.db.Where("id = ?", id).Preload("User", "Category").First(&modelContent).Error
+	if err != nil {
+		code = "[REPOSITORY] GetContentByID - 1"
+		log.Errorw(code, err)
+		return nil, err
+	}
+
+	tags := strings.Split(modelContent.Tags, ",")
+	resp := entity.ContentEntity{
+		ID:          int64(modelContent.ID),
+		Title:       modelContent.Title,
+		Excerpt:     modelContent.Excerpt,
+		Description: modelContent.Description,
+		Image:       modelContent.Image,
+		Tags:        tags,
+		Status:      modelContent.Status,
+		CategoryID:  modelContent.CategoryID,
+		CreatedByID: modelContent.CreatedByID,
+		CreatedAt:   modelContent.CreatedAt,
+		Category: entity.CategoryEntity{
+			ID:    modelContent.CategoryID,
+			Title: modelContent.Category.Title,
+			Slug:  modelContent.Category.Slug,
+		},
+		User: entity.UserEntity{
+			ID:   modelContent.User.ID,
+			Name: modelContent.User.Name,
+		},
+	}
+
+	return &resp, nil
+
 }
 
 // GetContents implements ContentRepository.
@@ -58,7 +97,7 @@ func (c *contentRepository) GetContents(ctx context.Context) ([]entity.ContentEn
 			Excerpt:     val.Excerpt,
 			Description: val.Description,
 			Image:       val.Image,
-			Tags:         tags,
+			Tags:        tags,
 			Status:      val.Status,
 			CategoryID:  val.CategoryID,
 			CreatedByID: val.CreatedByID,
