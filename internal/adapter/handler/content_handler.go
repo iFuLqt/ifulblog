@@ -81,7 +81,7 @@ func (ch *contentHandler) CreateContent(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(errorResp)
 	}
 
-	defaultSuccesResponse.Meta.Status = false
+	defaultSuccesResponse.Meta.Status = true
 	defaultSuccesResponse.Meta.Message = "Content created successfully"
 	defaultSuccesResponse.Data = nil
 
@@ -235,7 +235,75 @@ func (ch *contentHandler) GetContents(c *fiber.Ctx) error {
 
 // UpdateContent implements ContentHandler.
 func (ch *contentHandler) UpdateContent(c *fiber.Ctx) error {
-	panic("unimplemented")
+	claims := c.Locals("user").(entity.JwtData)
+	if claims.UserID == 0 {
+		code = "[HANDLER] UpdateContent - 1"
+		log.Errorw(code, err)
+		errorResp.Meta.Status = false
+		errorResp.Meta.Message = "Unauthrized access"
+
+		return c.Status(fiber.StatusUnauthorized).JSON(errorResp)
+	}
+
+	userID := claims.UserID
+	var req request.ContentRequest
+	if err = c.BodyParser(&req); err != nil {
+		code = "[HANDLER] UpdateContent - 2"
+		log.Errorw(code, err)
+		errorResp.Meta.Status = false
+		errorResp.Meta.Message = "Invalid request body"
+
+		return c.Status(fiber.StatusBadRequest).JSON(errorResp)
+	}
+
+	if err = validatorLib.ValidateStruct(&req); err != nil {
+		code = "[HANDLER] UpdateContent - 3"
+		log.Errorw(code, err)
+		errorResp.Meta.Status = false
+		errorResp.Meta.Message = err.Error()
+
+		return c.Status(fiber.StatusBadRequest).JSON(errorResp)
+	}
+
+	idParam := c.Params("contentID")
+	contentID, err := conv.StringToInt64(idParam)
+	if err != nil {
+		code = "[HANDLER] UpdateContent 4"
+		log.Errorw(code, err)
+		errorResp.Meta.Status = false
+		errorResp.Meta.Message = err.Error()
+
+		return c.Status(fiber.StatusBadRequest).JSON(errorResp)
+	}
+
+	tags := strings.Split(req.Tags, ",")
+	reqEntity := entity.ContentEntity{
+		ID:          contentID,
+		Title:       req.Title,
+		Excerpt:     req.Excerpt,
+		Description: req.Description,
+		Image:       req.Image,
+		Tags:        tags,
+		Status:      req.Status,
+		CategoryID:  req.CategoryID,
+		CreatedByID: int64(userID),
+	}
+
+	err = ch.contentService.UpdateContent(c.Context(), reqEntity)
+	if err != nil {
+		code = "[HANDLER] CreateContent - 4"
+		log.Errorw(code, err)
+		errorResp.Meta.Status = false
+		errorResp.Meta.Message = err.Error()
+
+		return c.Status(fiber.StatusInternalServerError).JSON(errorResp)
+	}
+
+	defaultSuccesResponse.Meta.Status = true
+	defaultSuccesResponse.Meta.Message = "Content updated successfully"
+	defaultSuccesResponse.Data = nil
+
+	return c.Status(fiber.StatusCreated).JSON(defaultSuccesResponse)
 }
 
 // UploadImageR2 implements ContentHandler.

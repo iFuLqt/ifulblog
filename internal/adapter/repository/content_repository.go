@@ -26,13 +26,13 @@ type contentRepository struct {
 func (c *contentRepository) CreateContent(ctx context.Context, req entity.ContentEntity) error {
 	tags := strings.Join(req.Tags, ",")
 	modelContent := model.Content{
-		Title: req.Title,
-		Excerpt: req.Excerpt,
+		Title:       req.Title,
+		Excerpt:     req.Excerpt,
 		Description: req.Description,
-		Image: req.Image,
-		Tags: tags,
-		Status: req.Status,
-		CategoryID: req.CategoryID,
+		Image:       req.Image,
+		Tags:        tags,
+		Status:      req.Status,
+		CategoryID:  req.CategoryID,
 		CreatedByID: req.CreatedByID,
 	}
 
@@ -139,7 +139,26 @@ func (c *contentRepository) GetContents(ctx context.Context) ([]entity.ContentEn
 
 // UpdateContent implements ContentRepository.
 func (c *contentRepository) UpdateContent(ctx context.Context, req entity.ContentEntity) error {
-	panic("unimplemented")
+	tags := strings.Join(req.Tags, ",")
+	modelContent := model.Content{
+		Title:       req.Title,
+		Excerpt:     req.Excerpt,
+		Description: req.Description,
+		Image:       req.Image,
+		Tags:        tags,
+		Status:      req.Status,
+		CategoryID:  req.CategoryID,
+		CreatedByID: req.CreatedByID,
+	}
+
+	err := c.db.Where("id = ?", req.ID).Updates(&modelContent).Error
+	if err != nil {
+		code = "[REPOSITORY] UpdateContent - 1"
+		log.Errorw(code, err)
+		return err
+	}
+	
+	return nil
 }
 
 func NewContentRepository(db *gorm.DB) ContentRepository {
