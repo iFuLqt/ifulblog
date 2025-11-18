@@ -237,7 +237,7 @@ func (ch *contentHandler) GetContents(c *fiber.Ctx) error {
 
 // UpdateContent implements ContentHandler.
 func (ch *contentHandler) UpdateContent(c *fiber.Ctx) error {
-	claims := c.Locals("user").(entity.JwtData)
+	claims := c.Locals("user").(*entity.JwtData)
 	if claims.UserID == 0 {
 		code = "[HANDLER] UpdateContent - 1"
 		log.Errorw(code, err)
@@ -310,7 +310,7 @@ func (ch *contentHandler) UpdateContent(c *fiber.Ctx) error {
 
 // UploadImageR2 implements ContentHandler.
 func (ch *contentHandler) UploadImageR2(c *fiber.Ctx) error {
-	claims := c.Locals("user").(entity.JwtData)
+	claims := c.Locals("user").(*entity.JwtData)
 	if claims.UserID == 0 {
 		code = "[HANDLER] UpdateContent - 1"
 		log.Errorw(code, err)
@@ -342,7 +342,7 @@ func (ch *contentHandler) UploadImageR2(c *fiber.Ctx) error {
 
 	req.Image = fmt.Sprintf("./temp/content/%s", file.Filename)
 	reqEntity := entity.FileUploadEntity{
-		Name: fmt.Sprintf("%d-%d", claims.UserID, time.Now().UnixNano()),
+		Name: fmt.Sprintf("%d-%d", int64(claims.UserID), time.Now().UnixNano()),
 		Path: req.Image,
 	}
 
@@ -369,7 +369,7 @@ func (ch *contentHandler) UploadImageR2(c *fiber.Ctx) error {
 	}
 
 	urlImageResp := map[string]interface{}{
-		"urlImage":  imageUrl,
+		"urlImage": imageUrl,
 	}
 
 	defaultSuccesResponse.Meta.Status = true
