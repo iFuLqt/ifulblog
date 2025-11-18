@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"fmt"
 	"ifulblog/internal/adapter/handler/request"
 	"ifulblog/internal/adapter/handler/response"
 	"ifulblog/internal/core/domain/entity"
 	"ifulblog/internal/core/service"
 	"ifulblog/lib/conv"
 	validatorLib "ifulblog/lib/validator"
+	"os"
 	"strings"
 	"time"
 
@@ -308,7 +310,73 @@ func (ch *contentHandler) UpdateContent(c *fiber.Ctx) error {
 
 // UploadImageR2 implements ContentHandler.
 func (ch *contentHandler) UploadImageR2(c *fiber.Ctx) error {
-	panic("unimplemented")
+	claims := c.Locals("user").(entity.JwtData)
+	if claims.UserID == 0 {
+		code = "[HANDLER] UpdateContent - 1"
+		log.Errorw(code, err)
+		errorResp.Meta.Status = false
+		errorResp.Meta.Message = "Unauthrized access"
+
+		return c.Status(fiber.StatusUnauthorized).JSON(errorResp)
+	}
+
+	var req request.FileUploadRequest
+	file, err := c.FormFile("image")
+	if err != nil {
+		code = "[HANDLER] UploadImageR2 - 2"
+		log.Errorw(code, err)
+		errorResp.Meta.Status = false
+		errorResp.Meta.Message = err.Error()
+
+		return c.Status(fiber.StatusBadRequest).JSON(errorResp)
+	}
+
+	if err = c.SaveFile(file, fmt.Sprintf("./temp/content/%s", file.Filename)); err != nil {
+		code = "[HANDLER] UploadImageR2 - 3"
+		log.Errorw(code, err)
+		errorResp.Meta.Status = false
+		errorResp.Meta.Message = err.Error()
+
+		return c.Status(fiber.StatusInternalServerError).JSON(errorResp)
+	}
+
+	req.Image = fmt.Sprintf("./temp/content/%s", file.Filename)
+	reqEntity := entity.FileUploadEntity{
+		Name: fmt.Sprintf("%d-%d", claims.UserID, time.Now().UnixNano()),
+		Path: req.Image,
+	}
+
+	imageUrl, err := ch.contentService.UploadImageR2(c.Context(), reqEntity)
+	if err != nil {
+		code = "[HANDLER] UploadImageR2 - 4"
+		log.Errorw(code, err)
+		errorResp.Meta.Status = false
+		errorResp.Meta.Message = err.Error()
+
+		return c.Status(fiber.StatusInternalServerError).JSON(errorResp)
+	}
+
+	if imageUrl != "" {
+		err = os.Remove(req.Image)
+		if err != nil {
+			code = "[HANDLER] UploadImageR2 - 5"
+			log.Errorw(code, err)
+			errorResp.Meta.Status = false
+			errorResp.Meta.Message = err.Error()
+
+			return c.Status(fiber.StatusInternalServerError).JSON(errorResp)
+		}
+	}
+
+	urlImageResp := map[string]interface{}{
+		"urlImage":  imageUrl,
+	}
+
+	defaultSuccesResponse.Meta.Status = true
+	defaultSuccesResponse.Meta.Message = "Content updated successfully"
+	defaultSuccesResponse.Data = urlImageResp
+
+	return c.Status(fiber.StatusCreated).JSON(defaultSuccesResponse)
 }
 
 func NewContentHandler(contentService service.ContentService) ContentHandler {
