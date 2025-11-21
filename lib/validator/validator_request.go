@@ -25,6 +25,8 @@ func ValidateStruct(s interface{}) error{
 				if err.Field() == "Password" {
 					errorMessage = append(errorMessage, "Password minimal 8 karakter")
 				}
+			case "eqfield":
+				errorMessage = append(errorMessage, err.Field() + " harus sama dengan " + err.Param() + ".")
 			default:
 				errorMessage = append(errorMessage, "Field "+err.Field()+" tidak valid")
 			}
