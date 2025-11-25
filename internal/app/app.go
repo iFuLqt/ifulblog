@@ -18,6 +18,7 @@ import (
 	"ifulblog/lib/pagination"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/gofiber/contrib/swagger"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -71,6 +72,16 @@ func RunServer() {
 	app.Use(logger.New(logger.Config{
 		Format: "[${time}] %{ip} %{status} - %{latency} %{method} %{path}\n",
 	}))
+
+	if os.Getenv("APP_ENV") != "production" {
+		cfg := swagger.Config{
+			BasePath: "/api",
+			FilePath: "./docs/swagger.json",
+			Path:     "docs",
+			Title:    "Swagger API Docs",
+		}
+		app.Use(swagger.New(cfg))
+	}
 
 	api := app.Group("/api")
 	api.Post("/login", authHandler.Login)
