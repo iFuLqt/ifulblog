@@ -130,7 +130,7 @@ func (ch *contentHandler) GetContentWithQuery(c *fiber.Ctx) error {
 		Status: "PUBLISH",
 	}
 
-	results, err := ch.contentService.GetContents(c.Context(), reqEntity)
+	results,totalData, totalPages, err := ch.contentService.GetContents(c.Context(), reqEntity)
 	if err != nil {
 		code = "[HANDLER] GetContentWithQuery - 3"
 		log.Errorw(code, err)
@@ -155,7 +155,7 @@ func (ch *contentHandler) GetContentWithQuery(c *fiber.Ctx) error {
 			Status:       content.Status,
 			CategoryID:   content.CategoryID,
 			CreatedByID:  content.CreatedByID,
-			CreatedAt:    content.CreatedAt.Format(time.RFC3339),
+			CreatedAt:    content.CreatedAt.Local().Format("02 January 2006"),
 			CategoryName: content.Category.Title,
 			Author:       content.User.Name,
 		}
@@ -164,6 +164,13 @@ func (ch *contentHandler) GetContentWithQuery(c *fiber.Ctx) error {
 	}
 
 	defaultSuccesResponse.Data = responseContents
+	defaultSuccesResponse.Pagination = &response.PaginationResponse{
+		TotalRecords: totalData,
+		Page: int64(page),
+		PerPage: int64(limit),
+		TotalPages: totalPages,
+	}
+
 	return c.JSON(defaultSuccesResponse)
 }
 

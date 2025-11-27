@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"ifulblog/internal/core/domain/entity"
 	"ifulblog/internal/core/domain/model"
+	"math"
 	"strings"
 
 	"github.com/gofiber/fiber/v2/log"
@@ -13,7 +14,7 @@ import (
 )
 
 type ContentRepository interface {
-	GetContents(ctx context.Context, query entity.QueryString) ([]entity.ContentEntity, error)
+	GetContents(ctx context.Context, query entity.QueryString) ([]entity.ContentEntity, int64, int64, error)
 	GetContentByID(ctx context.Context, id int64) (*entity.ContentEntity, error)
 	CreateContent(ctx context.Context, req entity.ContentEntity) error
 	UpdateContent(ctx context.Context, req entity.ContentEntity) error
@@ -97,28 +98,43 @@ func (c *contentRepository) GetContentByID(ctx context.Context, id int64) (*enti
 }
 
 // GetContents implements ContentRepository.
-func (c *contentRepository) GetContents(ctx context.Context, query entity.QueryString) ([]entity.ContentEntity, error) {
+func (c *contentRepository) GetContents(ctx context.Context, query entity.QueryString) ([]entity.ContentEntity, int64, int64, error) {
 	var modelContents []model.Content
+	var countData int64
 
 	order := fmt.Sprintf("%s %s", query.OrderBy, query.OrderType)
 	offset := (query.Page - 1) * query.Limit
+
 	status := ""
 	if query.Status != "" {
 		status = query.Status
 	}
 
-	err = c.db.Preload(clause.Associations).
+	sqlMain := c.db.Preload(clause.Associations).
 		Where("title ILIKE ? OR excerpt ILIKE ? OR description ILIKE ?",
 			"%"+query.Search+"%", "%"+query.Search+"%", "%"+query.Search+"%").
-		Where("status LIKE ?", "%"+status+"%").
-		Order(order).
-		Limit(int(query.Limit)).
-		Offset(int(offset)).
-		Find(&modelContents).Error
+		Where("status LIKE ?", "%"+status+"%")
+
+	if query.CategoryID > 0 {
+		sqlMain = sqlMain.Where("category_id = ?", query.CategoryID)
+	}
+
+	err = sqlMain.Model(&modelContents).Count(&countData).Error
 	if err != nil {
 		code = "[REPOSITORY] GetContents - 1"
 		log.Errorw(code, err)
-		return nil, err
+		return nil, 0, 0, err
+	}
+
+	// Contoh Hasil : 15/10 = 1.5 --> int(1)
+	// Contoh Hasil : 15/10 = 1.5 --> int(math.Ceil(2)) --> 2, Pembulatan keatas
+	totalPages := int(math.Ceil(float64(countData) / float64(query.Limit)))
+
+	err = sqlMain.Order(order).Limit(int(query.Limit)).Offset(int(offset)).Find(&modelContents).Error
+	if err != nil {
+		code = "[REPOSITORY] GetContents - 2"
+		log.Errorw(code, err)
+		return nil, 0, 0, err
 	}
 
 	resps := []entity.ContentEntity{}
@@ -150,7 +166,7 @@ func (c *contentRepository) GetContents(ctx context.Context, query entity.QueryS
 		resps = append(resps, resp)
 	}
 
-	return resps, nil
+	return resps, countData, int64(totalPages), nil
 }
 
 // UpdateContent implements ContentRepository.
